@@ -6,11 +6,13 @@
 
 #include "DarwinSpecific.h"
 #include "../../VoIPController.h"
+#include "../../logging.h"
 
 #import <Foundation/Foundation.h>
 #if TARGET_OS_IOS
 #import <CoreTelephony/CTTelephonyNetworkInfo.h>
 #import <CoreTelephony/CTCarrier.h>
+#import <AVFoundation/AVFoundation.h>
 #endif
 
 using namespace tgvoip;
@@ -73,12 +75,36 @@ CellularCarrierInfo DarwinSpecific::GetCarrierInfo(){
 #if TARGET_OS_IOS
 	CTTelephonyNetworkInfo* netinfo=[CTTelephonyNetworkInfo new];
 	CTCarrier* carrier=[netinfo subscriberCellularProvider];
-	if(carrier && [carrier carrierName]){
-    	info.name=[[carrier carrierName] cStringUsingEncoding:NSUTF8StringEncoding];
-    	info.mcc=[[carrier mobileCountryCode] cStringUsingEncoding:NSUTF8StringEncoding];
-    	info.mnc=[[carrier mobileNetworkCode] cStringUsingEncoding:NSUTF8StringEncoding];
-    	info.countryCode=[[[carrier isoCountryCode] uppercaseString] cStringUsingEncoding:NSUTF8StringEncoding];
+	if(carrier){
+		NSString* name=[carrier carrierName];
+		NSString* mcc=[carrier mobileCountryCode];
+		NSString* mnc=[carrier mobileNetworkCode];
+		NSString* countryCode=[carrier isoCountryCode];
+		if(name && mcc && mnc && countryCode){
+        	info.name=[name cStringUsingEncoding:NSUTF8StringEncoding];
+        	info.mcc=[mcc cStringUsingEncoding:NSUTF8StringEncoding];
+        	info.mnc=[mnc cStringUsingEncoding:NSUTF8StringEncoding];
+        	info.countryCode=[[countryCode uppercaseString] cStringUsingEncoding:NSUTF8StringEncoding];
+		}
 	}
 #endif
 	return info;
+}
+
+void DarwinSpecific::ConfigureAudioSession(){
+#if TARGET_OS_IOS
+	AVAudioSession* session=[AVAudioSession sharedInstance];
+	NSError* error=nil;
+	[session setPreferredSampleRate:48000.0 error:&error];
+	if(error){
+		LOGE("Failed to set preferred sample rate on AVAudioSession: %s", [[error localizedDescription] cStringUsingEncoding:NSUTF8StringEncoding]);
+		return;
+	}
+	[session setPreferredIOBufferDuration:0.020 error:&error];
+	if(error){
+		LOGE("Failed to set preferred IO buffer duration on AVAudioSession: %s", [[error localizedDescription] cStringUsingEncoding:NSUTF8StringEncoding]);
+		return;
+	}
+	LOGI("Configured AVAudioSession: sampleRate=%f, IOBufferDuration=%f", session.sampleRate, session.IOBufferDuration);
+#endif
 }

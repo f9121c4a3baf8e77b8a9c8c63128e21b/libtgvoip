@@ -26,7 +26,7 @@
 #define IS_MOBILE_NETWORK(x) (x==NET_TYPE_GPRS || x==NET_TYPE_EDGE || x==NET_TYPE_3G || x==NET_TYPE_HSPA || x==NET_TYPE_LTE || x==NET_TYPE_OTHER_MOBILE)
 
 #define PROTOCOL_NAME 0x50567247 // "GrVP" in little endian (reversed here)
-#define PROTOCOL_VERSION 8
+#define PROTOCOL_VERSION 9
 #define MIN_PROTOCOL_VERSION 3
 
 #define STREAM_DATA_FLAG_LEN16 0x40
@@ -41,12 +41,16 @@
 #define STREAM_TYPE_VIDEO 2
 
 #define FOURCC(a,b,c,d) ((uint32_t)d | ((uint32_t)c << 8) | ((uint32_t)b << 16) | ((uint32_t)a << 24))
+#define PRINT_FOURCC(x) (char)(x >> 24), (char)(x >> 16), (char)(x >> 8), (char)x
 
 #define CODEC_OPUS_OLD 1
 #define CODEC_OPUS FOURCC('O','P','U','S')
+
 #define CODEC_AVC FOURCC('A','V','C',' ')
 #define CODEC_HEVC FOURCC('H','E','V','C')
 #define CODEC_VP8 FOURCC('V','P','8','0')
+#define CODEC_VP9 FOURCC('V','P','9','0')
+#define CODEC_AV1 FOURCC('A','V','0','1')
 
 #define DEFAULT_MTU 1100
 
@@ -61,6 +65,7 @@
 #define PFLAG_HAS_SENDER_TAG_HASH 64
 
 #define XPFLAG_HAS_EXTRA 1
+#define XPFLAG_HAS_RECV_TS 2
 
 #define EXTRA_TYPE_STREAM_FLAGS 1
 #define EXTRA_TYPE_STREAM_CSD 2
@@ -73,11 +78,23 @@
 #define STREAM_FLAG_ENABLED 1
 #define STREAM_FLAG_DTX 2
 #define STREAM_FLAG_EXTRA_EC 4
+#define STREAM_FLAG_PAUSED 8
 
 #define STREAM_RFLAG_SUPPORTED 1
 
 #define INIT_FLAG_DATA_SAVING_ENABLED 1
 #define INIT_FLAG_GROUP_CALLS_SUPPORTED 2
+#define INIT_FLAG_VIDEO_SEND_SUPPORTED 4
+#define INIT_FLAG_VIDEO_RECV_SUPPORTED 8
+
+#define INIT_VIDEO_RES_NONE 0
+#define INIT_VIDEO_RES_240 1
+#define INIT_VIDEO_RES_360 2
+#define INIT_VIDEO_RES_480 3
+#define INIT_VIDEO_RES_720 4
+#define INIT_VIDEO_RES_1080 5
+#define INIT_VIDEO_RES_1440 6
+#define INIT_VIDEO_RES_4K 7
 
 #define TLID_DECRYPTED_AUDIO_BLOCK 0xDBF948C1
 #define TLID_SIMPLE_AUDIO_BLOCK 0xCC0D0E76
@@ -89,10 +106,7 @@
 #define TLID_VECTOR 0x1cb5c415
 #define PAD4(x) (4-(x+(x<=253 ? 1 : 0))%4)
 
-#define MAX_RECENT_PACKETS 64
-
-#define MAX(a,b) (a>b ? a : b)
-#define MIN(a,b) (a<b ? a : b)
+#define MAX_RECENT_PACKETS 128
 
 #define SHA1_LENGTH 20
 #define SHA256_LENGTH 32
@@ -114,5 +128,15 @@ inline bool seqgt(uint32_t s1, uint32_t s2){
 #define NEED_RATE_FLAG_UDP_BAD 4
 #define NEED_RATE_FLAG_RECONNECTING 8
 
+#define VIDEO_FRAME_FLAG_KEYFRAME 1
+
+#define VIDEO_ROTATION_MASK 3
+#define VIDEO_ROTATION_0 0
+#define VIDEO_ROTATION_90 1
+#define VIDEO_ROTATION_180 2
+#define VIDEO_ROTATION_270 3
+
+#define FEC_SCHEME_XOR 1
+#define FEC_SCHEME_CM256 2
 
 #endif //TGVOIP_PRIVATEDEFINES_H

@@ -19,7 +19,7 @@
 using namespace tgvoip;
 
 MessageThread::MessageThread() : Thread(std::bind(&MessageThread::Run, this)){
-
+	running=true;
 	SetName("MessageThread");
 
 #ifdef _WIN32
@@ -86,6 +86,10 @@ void MessageThread::Run(){
 				pthread_cond_wait(&cond, queueMutex.NativeHandle());
 			}
 #endif
+		}
+		if(!running){
+			queueMutex.Unlock();
+			return;
 		}
 		currentTime=VoIPController::GetCurrentTime();
 		std::vector<Message> msgsToDeliverNow;

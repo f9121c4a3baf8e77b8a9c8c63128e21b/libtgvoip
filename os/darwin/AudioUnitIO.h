@@ -11,6 +11,7 @@
 #include <AudioToolbox/AudioToolbox.h>
 #include "../../threading.h"
 #include <string>
+#include <atomic>
 #include "../../audio/AudioIO.h"
 
 namespace tgvoip{ namespace audio{
@@ -19,7 +20,7 @@ class AudioOutputAudioUnit;
 
 	class AudioUnitIO : public AudioIO{
 	public:
-		AudioUnitIO();
+		AudioUnitIO(std::string inputDeviceID, std::string outputDeviceID);
 		~AudioUnitIO();
 		void EnableInput(bool enabled);
 		void EnableOutput(bool enabled);
@@ -27,6 +28,7 @@ class AudioOutputAudioUnit;
 		virtual AudioOutput* GetOutput();
 #if TARGET_OS_OSX
 		void SetCurrentDevice(bool input, std::string deviceID);
+		void SetDuckingEnabled(bool enabled);
 #endif
 	
 	private:
@@ -37,13 +39,16 @@ class AudioOutputAudioUnit;
 		static OSStatus DefaultDeviceChangedCallback(AudioObjectID inObjectID, UInt32 inNumberAddresses, const AudioObjectPropertyAddress *inAddresses, void *inClientData);
 		std::string currentInputDevice;
 		std::string currentOutputDevice;
+		bool duckingEnabled=true;
+		bool actualDuckingEnabled=true;
+		AudioDeviceID currentOutputDeviceID;
 #endif
 		AudioComponentInstance unit;
 		AudioInputAudioUnit* input;
 		AudioOutputAudioUnit* output;
 		AudioBufferList inBufferList;
-		bool inputEnabled;
-		bool outputEnabled;
+		std::atomic<bool> inputEnabled;
+		std::atomic<bool> outputEnabled;
 		bool started;
 	};
 }}

@@ -16,9 +16,15 @@ using namespace tgvoip;
 
 #pragma mark - BufferInputStream
 
-BufferInputStream::BufferInputStream(unsigned char* data, size_t length){
+BufferInputStream::BufferInputStream(const unsigned char* data, size_t length){
 	this->buffer=data;
 	this->length=length;
+	offset=0;
+}
+
+BufferInputStream::BufferInputStream(const Buffer &buffer){
+	this->buffer=*buffer;
+	this->length=buffer.Length();
 	offset=0;
 }
 
@@ -102,6 +108,10 @@ void BufferInputStream::ReadBytes(unsigned char *to, size_t count){
 	offset+=count;
 }
 
+void BufferInputStream::ReadBytes(Buffer &to){
+	ReadBytes(*to, to.Length());
+}
+
 BufferInputStream BufferInputStream::GetPartBuffer(size_t length, bool advance){
 	EnsureEnoughRemaining(length);
 	BufferInputStream s=BufferInputStream(buffer+offset, length);
@@ -120,6 +130,8 @@ void BufferInputStream::EnsureEnoughRemaining(size_t need){
 
 BufferOutputStream::BufferOutputStream(size_t size){
 	buffer=(unsigned char*) malloc(size);
+	if(!buffer)
+		throw std::bad_alloc();
 	offset=0;
 	this->size=size;
 	bufferProvided=false;
@@ -207,6 +219,8 @@ void BufferOutputStream::ExpandBufferIfNeeded(size_t need){
 			buffer=(unsigned char *) realloc(buffer, size+need);
 			size+=need;
 		}
+		if(!buffer)
+			throw std::bad_alloc();
 	}
 }
 
@@ -220,57 +234,3 @@ void BufferOutputStream::Rewind(size_t numBytes){
 		throw std::out_of_range("buffer underflow");
 	offset-=numBytes;
 }
-
-#pragma mark - BufferPool
-
-BufferPool::BufferPool(unsigned int size, unsigned int count){
-	assert(count<=64);
-	buffers[0]=(unsigned char*) malloc(size*count);
-	bufferCount=count;
-	unsigned int i;
-	for(i=1;i<count;i++){
-		buffers[i]=buffers[0]+i*size;
-	}
-	usedBuffers=0;
-	this->size=size;
-}
-
-BufferPool::~BufferPool(){
-	free(buffers[0]);
-}
-
-unsigned char* BufferPool::Get(){
-	MutexGuard m(mutex);
-	int i;
-	for(i=0;i<bufferCount;i++){
-		if(!((usedBuffers >> i) & 1)){
-			usedBuffers|=(1LL << i);
-			return buffers[i];
-		}
-	}
-	return NULL;
-}
-
-void BufferPool::Reuse(unsigned char* buffer){
-	MutexGuard m(mutex);
-	int i;
-	for(i=0;i<bufferCount;i++){
-		if(buffers[i]==buffer){
-			usedBuffers&= ~(1LL << i);
-			return;
-		}
-	}
-	LOGE("pointer passed isn't a valid buffer from this pool");
-	abort();
-}
-
-size_t BufferPool::GetSingleBufferSize(){
-	return size;
-}
-
-size_t BufferPool::GetBufferCount(){
-	return (size_t) bufferCount;
-}
-
-#pragma mark - Buffer
-

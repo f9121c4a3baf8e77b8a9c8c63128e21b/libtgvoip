@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <vector>
 #include <memory>
+#include <atomic>
 
 struct OpusDecoder;
 
@@ -39,8 +40,8 @@ public:
 	void SetJitterBuffer(std::shared_ptr<JitterBuffer> jitterBuffer);
 	void SetDTX(bool enable);
 	void SetLevelMeter(AudioLevelMeter* levelMeter);
-	void AddAudioEffect(AudioEffect* effect);
-	void RemoveAudioEffect(AudioEffect* effect);
+	void AddAudioEffect(effects::AudioEffect* effect);
+	void RemoveAudioEffect(effects::AudioEffect* effect);
 
 private:
 	void Initialize(bool isAsync, bool needEC);
@@ -49,13 +50,13 @@ private:
 	int DecodeNextFrame();
 	::OpusDecoder* dec;
 	::OpusDecoder* ecDec;
-	BlockingQueue<unsigned char*>* decodedQueue;
-	BufferPool* bufferPool;
+	BlockingQueue<Buffer>* decodedQueue;
+	BufferPool<960*2, 32> bufferPool;
 	unsigned char* buffer;
 	unsigned char* lastDecoded;
 	unsigned char* processedBuffer;
 	size_t outputBufferSize;
-	bool running;
+	std::atomic<bool> running;
     Thread* thread;
 	Semaphore* semaphore;
 	uint32_t frameDuration;
@@ -65,7 +66,7 @@ private:
 	int consecutiveLostPackets;
 	bool enableDTX;
 	size_t silentPacketCount;
-	std::vector<AudioEffect*> postProcEffects;
+	std::vector<effects::AudioEffect*> postProcEffects;
 	bool async;
 	unsigned char nextBuffer[8192];
 	unsigned char decodeBuffer[8192];

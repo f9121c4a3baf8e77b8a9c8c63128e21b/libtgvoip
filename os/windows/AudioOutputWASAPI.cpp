@@ -35,7 +35,9 @@ AudioOutputWASAPI::AudioOutputWASAPI(std::string deviceID){
 	refCount=1;
 	HRESULT res;
 	res=CoInitializeEx(NULL, COINIT_MULTITHREADED);
-	CHECK_RES(res, "CoInitializeEx");
+	if(FAILED(res) && res!=RPC_E_CHANGED_MODE){
+		CHECK_RES(res, "CoInitializeEx");
+	}
 #ifdef TGVOIP_WINXP_COMPAT
 	HANDLE (WINAPI *__CreateEventExA)(LPSECURITY_ATTRIBUTES lpEventAttributes, LPCSTR lpName, DWORD dwFlags, DWORD dwDesiredAccess);
 	__CreateEventExA=(HANDLE (WINAPI *)(LPSECURITY_ATTRIBUTES, LPCSTR, DWORD, DWORD))GetProcAddress(GetModuleHandleA("kernel32.dll"), "CreateEventExA");
@@ -120,7 +122,9 @@ void AudioOutputWASAPI::EnumerateDevices(std::vector<tgvoip::AudioOutputDevice>&
 #ifdef TGVOIP_WINDOWS_DESKTOP
 	HRESULT res;
 	res=CoInitializeEx(NULL, COINIT_MULTITHREADED);
-	SCHECK_RES(res, "CoInitializeEx");
+	if(FAILED(res) && res!=RPC_E_CHANGED_MODE){
+		SCHECK_RES(res, "CoInitializeEx");
+	}
 
 	IMMDeviceEnumerator *deviceEnumerator = NULL;
 	IMMDeviceCollection *deviceCollection = NULL;
@@ -256,15 +260,27 @@ void AudioOutputWASAPI::ActuallySetCurrentDevice(std::string deviceID){
 	res=device->Activate(__uuidof(IAudioClient), CLSCTX_INPROC_SERVER, NULL, (void**)&audioClient);
 	CHECK_RES(res, "device->Activate");
 #else
-	Platform::String^ defaultDevID=Windows::Media::Devices::MediaDevice::GetDefaultAudioRenderId(Windows::Media::Devices::AudioDeviceRole::Communications);
-	if(defaultDevID==nullptr){
-		LOGE("Didn't find playback device; failing");
-		failed=true;
-		return;
+	std::wstring devID;
+
+	if (deviceID=="default"){
+		Platform::String^ defaultDevID=Windows::Media::Devices::MediaDevice::GetDefaultAudioRenderId(Windows::Media::Devices::AudioDeviceRole::Communications);
+		if(defaultDevID==nullptr){
+			LOGE("Didn't find playback device; failing");
+			failed=true;
+			return;
+		}else{
+			isDefaultDevice=true;
+			devID=defaultDevID->Data();
+		}
+	}else{
+		int wchars_num=MultiByteToWideChar(CP_UTF8, 0, deviceID.c_str(), -1, NULL, 0);
+		wchar_t* wstr=new wchar_t[wchars_num];
+		MultiByteToWideChar(CP_UTF8, 0, deviceID.c_str(), -1, wstr, wchars_num);
+		devID=wstr;
 	}
 
 	HRESULT res1, res2;
-	IAudioClient2* audioClient2=WindowsSandboxUtils::ActivateAudioDevice(defaultDevID->Data(), &res1, &res2);
+	IAudioClient2* audioClient2=WindowsSandboxUtils::ActivateAudioDevice(devID.c_str(), &res1, &res2);
 	CHECK_RES(res1, "activate1");
 	CHECK_RES(res2, "activate2");
 
